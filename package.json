@@ -5,6 +5,7 @@
   "type": "commonjs",
   "scripts": {
     "start": "node server.js",
+    "start:local": "powershell -ExecutionPolicy Bypass -File ./start-server.ps1",
     "deploy": "powershell -ExecutionPolicy Bypass -File ./deploy.ps1"
   }
 }

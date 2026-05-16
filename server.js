@@ -9,7 +9,9 @@ const PORT = Number(process.env.PORT || process.argv[2] || 8787);
 const APP_VERSION = "0.2.0-login-gated";
 const DEFAULT_BASE_URL = "https://api.openai.com/v1";
 const MAX_BODY_BYTES = 10 * 1024 * 1024;
-const DATA_DIR = path.resolve(process.env.PERSONACHAT_DATA_DIR || path.join(ROOT, ".personachat-data"));
+const DEFAULT_DATA_DIR = path.join(ROOT, "runtime", "data");
+const LEGACY_DATA_DIR = path.join(ROOT, ".personachat-data");
+const DATA_DIR = path.resolve(process.env.PERSONACHAT_DATA_DIR || resolveDefaultDataDir());
 const USERS_FILE = path.join(DATA_DIR, "users.json");
 const STATES_DIR = path.join(DATA_DIR, "states");
 const PASSWORD_ITERATIONS = 160000;
@@ -622,6 +624,14 @@ function readUpstreamError(text) {
   } catch (error) {
     return text;
   }
+}
+
+function resolveDefaultDataDir() {
+  if (!fs.existsSync(DEFAULT_DATA_DIR) && fs.existsSync(LEGACY_DATA_DIR)) {
+    return LEGACY_DATA_DIR;
+  }
+
+  return DEFAULT_DATA_DIR;
 }
 
 function setCommonHeaders(res) {

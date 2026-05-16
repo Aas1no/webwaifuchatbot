@@ -7,7 +7,7 @@
 ## 运行
 
 ```powershell
-node server.js
+.\start-server.ps1
 ```
 
 然后打开 `http://localhost:8787`。
@@ -31,23 +31,23 @@ node server.js
 - `QWEN_API_KEY`：通义千问 API Key；也可以在网页里填写
 - `LOCAL_PROXY_BASE_URL`：本地代理地址，默认 `http://localhost:11434/v1`
 - `LOCAL_PROXY_API_KEY`：本地代理需要鉴权时使用
-- `PERSONACHAT_DATA_DIR`：账号、会话和配置保存目录，默认 `.personachat-data`
+- `PERSONACHAT_DATA_DIR`：账号、会话和配置保存目录，默认 `runtime/data`
 
-账号数据默认保存在项目下的 `.personachat-data`，已加入 `.gitignore`。部署服务器时请持久化这个目录，否则重启或重新部署后用户数据会丢失。API Key 仍只保存在浏览器当前会话，生产环境建议用环境变量配置供应商 Key。
+账号数据默认保存在项目下的 `runtime/data`，已加入 `.gitignore`。如果旧目录 `.personachat-data` 已经存在，服务会继续读取旧目录，避免本地历史数据丢失。部署服务器时请持久化正式数据目录，否则重启或重新部署后用户数据会丢失。API Key 仍只保存在浏览器当前会话，生产环境建议用环境变量配置供应商 Key。
 
-本地用 `start-server.ps1` 启动时，会把测试账号、测试对话和日志写到 `local-runtime/`：
+本地用 `start-server.ps1` 启动时，会把测试账号、测试对话和日志写到 `runtime/local/`：
 
-- `local-runtime/data`：本地测试账号、配置和对话
-- `local-runtime/logs`：本地运行日志
-- `local-runtime/previews`：本地预览截图
+- `runtime/local/data`：本地测试账号、配置和对话
+- `runtime/local/logs`：本地运行日志
+- `runtime/local/previews`：本地预览截图
 
-`local-runtime/` 不需要上传服务器。线上部署时建议把正式数据目录放到独立持久化路径，例如 `PERSONACHAT_DATA_DIR=/data/personachat`。
+`runtime/` 不需要上传服务器。线上部署时建议把正式数据目录放到独立持久化路径，例如 `PERSONACHAT_DATA_DIR=/data/personachat`。
 
-如果要交给云端部署助手，可以直接打包 `upload-package/` 目录。这个目录只包含部署需要的源码和本地头像，不包含测试账号、测试对话、日志或预览图。
+如果要交给云端部署助手，直接使用仓库最新源码或 `server-github-webhook/` 里的自动部署脚本，不再保留旧的 `upload-package/` 生成目录。
 
 如果云端部署后仍然看到旧界面，请检查：
 
-1. 是否部署的是 `upload-package/` 的内容，而不是外层目录或旧压缩包。
+1. 是否部署的是当前仓库最新源码，而不是旧压缩包或旧生成目录。
 2. 是否真的运行了 Node 服务 `node server.js`，而不是静态网站托管。
 3. 服务是否重启成功，旧 Node 进程是否还在占用端口。
 4. 浏览器或 CDN 是否缓存了旧的 `index.html`、`app.js`、`styles.css`。
@@ -98,7 +98,7 @@ notepad .\deploy.config.ps1
 
 ## 下一步
 
-1. 需要更大规模部署时，将 `.personachat-data` 迁移到 SQLite 或 PostgreSQL
+1. 需要更大规模部署时，将 `runtime/data` 或服务器正式数据目录迁移到 SQLite 或 PostgreSQL
 2. 增加全量导入/导出和重置本地数据
 3. 增强移动端会话/自定义角色切换
 4. 支持更完整的 SillyTavern 角色字段导入

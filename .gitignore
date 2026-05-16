@@ -4,6 +4,7 @@ node_modules/
 .env
 deploy.config.ps1
 dist/
+runtime/
 personachat-preview.png
 personachat-mobile-preview.png
 .personachat-data/
