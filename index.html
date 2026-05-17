@@ -119,6 +119,8 @@
           </div>
         </header>
 
+        <section class="character-banner" id="characterBanner" aria-hidden="true"></section>
+
         <section class="message-stream" id="messageStream" aria-live="polite"></section>
 
         <footer class="composer">
@@ -163,6 +165,7 @@
 
         <nav class="dashboard-tabs" aria-label="控制台分区">
           <button class="dashboard-tab active" data-dashboard-tab="model" type="button">模型</button>
+          <button class="dashboard-tab" data-dashboard-tab="appearance" type="button">界面</button>
           <button class="dashboard-tab" data-dashboard-tab="character" type="button">自定义角色</button>
           <button class="dashboard-tab" data-dashboard-tab="persona" type="button">身份</button>
         </nav>
@@ -197,7 +200,7 @@
           <label>
             API Key
             <input id="apiKeyInput" type="password" autocomplete="off" placeholder="sk-..." />
-            <span class="field-note">只保存在当前浏览器会话，不随账号同步；部署服务器时建议用环境变量配置。</span>
+            <span class="field-note">保存到当前账号数据中，会随账号同步；服务器数据目录请妥善保护。</span>
           </label>
           <label>
             温度 <span id="temperatureValue">0.7</span>
@@ -207,6 +210,34 @@
             <input id="streamToggle" type="checkbox" checked />
             <span>流式回复</span>
           </label>
+        </section>
+
+        <section class="dashboard-panel" data-dashboard-panel="appearance">
+          <div class="panel-heading">
+            <div>
+              <span>Appearance</span>
+              <h3>界面背景</h3>
+            </div>
+            <span class="mini-status">默认空白</span>
+          </div>
+          <input class="hidden-file-input" id="backgroundFileInput" type="file" accept="image/*" />
+          <div class="background-editor">
+            <button class="background-preview-button" id="backgroundPreviewBtn" type="button" aria-label="上传背景" title="上传背景">
+              <span class="background-preview-empty" id="backgroundPreviewText">空白背景</span>
+            </button>
+            <div class="background-editor-copy">
+              <strong>背景图片</strong>
+              <span class="field-note" id="backgroundStatusText">当前为空白背景；上传后会保存到账号数据中。</span>
+              <span class="section-actions">
+                <button class="icon-button" id="uploadBackgroundBtn" type="button" aria-label="上传背景" title="上传背景">
+                  <svg class="icon"><use href="#icon-upload"></use></svg>
+                </button>
+                <button class="icon-button" id="clearBackgroundBtn" type="button" aria-label="移除背景" title="移除背景">
+                  <svg class="icon"><use href="#icon-trash"></use></svg>
+                </button>
+              </span>
+            </div>
+          </div>
         </section>
 
         <section class="dashboard-panel" data-dashboard-panel="character">
@@ -235,6 +266,7 @@
           </div>
           <input class="hidden-file-input" id="characterFileInput" type="file" accept="application/json,.json" />
           <input class="hidden-file-input" id="characterAvatarInput" type="file" accept="image/*" />
+          <input class="hidden-file-input" id="characterBannerInput" type="file" accept="image/*" />
           <div class="character-form-section">
             <div class="form-section-title">基础</div>
             <div class="avatar-editor">
@@ -249,6 +281,23 @@
                     <svg class="icon"><use href="#icon-upload"></use></svg>
                   </button>
                   <button class="icon-button" id="clearCharacterAvatarBtn" type="button" aria-label="移除头像" title="移除头像">
+                    <svg class="icon"><use href="#icon-trash"></use></svg>
+                  </button>
+                </span>
+              </div>
+            </div>
+            <div class="banner-editor">
+              <button class="banner-preview-button" id="characterBannerPreviewBtn" type="button" aria-label="上传角色横幅" title="上传角色横幅">
+                <span class="banner-preview-empty" id="characterBannerPreviewText">透明横幅</span>
+              </button>
+              <div class="banner-editor-copy">
+                <strong>角色横幅</strong>
+                <span class="field-note" id="characterBannerStatusText">默认透明；上传后只对当前角色生效。</span>
+                <span class="section-actions">
+                  <button class="icon-button" id="uploadCharacterBannerBtn" type="button" aria-label="上传角色横幅" title="上传角色横幅">
+                    <svg class="icon"><use href="#icon-upload"></use></svg>
+                  </button>
+                  <button class="icon-button" id="clearCharacterBannerBtn" type="button" aria-label="移除角色横幅" title="移除角色横幅">
                     <svg class="icon"><use href="#icon-trash"></use></svg>
                   </button>
                 </span>
@@ -366,7 +415,7 @@
           密码
           <input id="authPasswordInput" type="password" autocomplete="current-password" placeholder="至少 6 位" />
         </label>
-        <p class="auth-status" id="authStatusText">登录后，配置、会话和头像会保存到服务器。</p>
+        <p class="auth-status" id="authStatusText">登录后，配置、会话、头像和 API Key 会保存到服务器。</p>
         <button class="auth-submit" id="authSubmitBtn" type="submit">登录并同步</button>
         <button class="auth-logout" id="authLogoutBtn" type="button" hidden>退出登录</button>
       </form>

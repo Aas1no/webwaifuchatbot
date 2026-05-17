@@ -606,6 +606,7 @@ const DEFAULT_ANJU_CHARACTER = {
   id: ANJU_CHARACTER_ID,
   avatar: "杏",
   avatarImage: "/anju-avatar.png?v=4",
+  bannerImage: "",
   avatarClass: "anju",
   name: "隐杏珠",
   label: "Lemonade Factory 主音吉他手",
@@ -665,6 +666,7 @@ const DEFAULT_GUNMU_CHARACTER = {
   id: GUNMU_CHARACTER_ID,
   avatar: "棍",
   avatarImage: "",
+  bannerImage: "",
   avatarClass: "custom",
   name: "棍母",
   label: "静默角色",
@@ -695,6 +697,8 @@ const state = {
     apiProvider: "deepseek",
     model: "deepseek-v4-flash",
     apiBaseUrl: "https://api.deepseek.com",
+    apiKeys: {},
+    backgroundImage: "",
     temperature: 0.7,
     stream: true,
   },
@@ -783,6 +787,7 @@ const refs = {
   chatList: document.querySelector("#chatList"),
   characterList: document.querySelector("#characterList"),
   messageStream: document.querySelector("#messageStream"),
+  characterBanner: document.querySelector("#characterBanner"),
   activeCharacterHeader: document.querySelector("#activeCharacterHeader"),
   messageInput: document.querySelector("#messageInput"),
   sendBtn: document.querySelector("#sendBtn"),
@@ -794,10 +799,16 @@ const refs = {
   deleteCharacterBtn: document.querySelector("#deleteCharacterBtn"),
   characterFileInput: document.querySelector("#characterFileInput"),
   characterAvatarInput: document.querySelector("#characterAvatarInput"),
+  characterBannerInput: document.querySelector("#characterBannerInput"),
   characterAvatarPreview: document.querySelector("#characterAvatarPreview"),
   characterAvatarPreviewBtn: document.querySelector("#characterAvatarPreviewBtn"),
+  characterBannerPreviewBtn: document.querySelector("#characterBannerPreviewBtn"),
+  characterBannerPreviewText: document.querySelector("#characterBannerPreviewText"),
+  characterBannerStatusText: document.querySelector("#characterBannerStatusText"),
   uploadCharacterAvatarBtn: document.querySelector("#uploadCharacterAvatarBtn"),
   clearCharacterAvatarBtn: document.querySelector("#clearCharacterAvatarBtn"),
+  uploadCharacterBannerBtn: document.querySelector("#uploadCharacterBannerBtn"),
+  clearCharacterBannerBtn: document.querySelector("#clearCharacterBannerBtn"),
   clearChatBtn: document.querySelector("#clearChatBtn"),
   deleteChatBtn: document.querySelector("#deleteChatBtn"),
   saveCharacterBtn: document.querySelector("#saveCharacterBtn"),
@@ -837,6 +848,12 @@ const refs = {
   temperatureInput: document.querySelector("#temperatureInput"),
   temperatureValue: document.querySelector("#temperatureValue"),
   streamToggle: document.querySelector("#streamToggle"),
+  backgroundFileInput: document.querySelector("#backgroundFileInput"),
+  backgroundPreviewBtn: document.querySelector("#backgroundPreviewBtn"),
+  backgroundPreviewText: document.querySelector("#backgroundPreviewText"),
+  backgroundStatusText: document.querySelector("#backgroundStatusText"),
+  uploadBackgroundBtn: document.querySelector("#uploadBackgroundBtn"),
+  clearBackgroundBtn: document.querySelector("#clearBackgroundBtn"),
   authBtn: document.querySelector("#authBtn"),
   authButtonText: document.querySelector("#authButtonText"),
   authPanel: document.querySelector("#authPanel"),
@@ -889,6 +906,8 @@ function applyPersistedState(saved) {
   state.characterPresetVersion = Number(saved.characterPresetVersion) || 0;
   state.provider = saved.provider || state.provider;
   state.settings = { ...state.settings, ...(saved.settings || {}) };
+  normalizeApiKeySettings();
+  normalizeBackgroundSettings();
   if (!state.settings.apiProvider) {
     state.settings.apiProvider = detectApiProvider(state.settings.apiBaseUrl);
   }
@@ -904,13 +923,23 @@ function applyPersistedState(saved) {
   }
 }
 
-function serializeState() {
+function serializeState(options = {}) {
+  const includeAccountSecrets = Boolean(options.includeAccountSecrets);
+  const settings = { ...state.settings };
+
+  if (includeAccountSecrets) {
+    settings.apiKeys = normalizeApiKeys(settings.apiKeys);
+  } else {
+    delete settings.apiKeys;
+    delete settings.apiKey;
+  }
+
   return {
     activeChatId: state.activeChatId,
     activeCharacterId: state.activeCharacterId,
     characterPresetVersion: state.characterPresetVersion,
     provider: state.provider,
-    settings: state.settings,
+    settings,
     persona: state.persona,
     characters: state.characters,
     chats: state.chats,
@@ -1024,6 +1053,7 @@ function hydrateCharacterDetails() {
   let changed = false;
   const fieldDefaults = {
     avatarImage: "",
+    bannerImage: "",
     role: "",
     background: "",
     relationship: "",
@@ -1228,6 +1258,33 @@ function syncApiProviderSettings(resetModel = false) {
   state.provider = state.settings.apiProvider === "local" ? "local-proxy" : "openai-compatible";
 }
 
+function normalizeBackgroundSettings() {
+  if (typeof state.settings.backgroundImage !== "string") {
+    state.settings.backgroundImage = "";
+    return;
+  }
+
+  state.settings.backgroundImage = state.settings.backgroundImage.trim();
+
+  if (state.settings.backgroundImage && !state.settings.backgroundImage.startsWith("data:image/")) {
+    state.settings.backgroundImage = "";
+  }
+}
+
+function getBackgroundImage() {
+  normalizeBackgroundSettings();
+  return state.settings.backgroundImage;
+}
+
+function applyBackgroundImage() {
+  const backgroundImage = getBackgroundImage();
+  document.body.classList.toggle("has-custom-background", Boolean(backgroundImage));
+  document.documentElement.style.setProperty(
+    "--app-background-image",
+    backgroundImage ? `url(${JSON.stringify(backgroundImage)})` : "none",
+  );
+}
+
 function detectApiProvider(baseUrl) {
   try {
     const host = new URL(baseUrl).hostname;
@@ -1253,6 +1310,12 @@ function getActiveCharacter() {
 function getChatCharacter(chat) {
   if (!chat) return getActiveCharacter() || state.characters[0];
   return state.characters.find((character) => character.id === chat.characterId) || getActiveCharacter() || state.characters[0];
+}
+
+function getCharacterBannerImage(character) {
+  if (!character || typeof character.bannerImage !== "string") return "";
+  const bannerImage = character.bannerImage.trim();
+  return bannerImage.startsWith("data:image/") ? bannerImage : "";
 }
 
 function getChatsForCharacter(characterId) {
@@ -1299,9 +1362,11 @@ function renderAvatarContent(character) {
 }
 
 function render() {
+  applyBackgroundImage();
   renderChats();
   renderCharacters();
   renderHeader();
+  renderCharacterBanner();
   renderMessages();
   renderInspector();
   renderDashboardSummary();
@@ -1356,6 +1421,7 @@ function createCharacterDraft(overrides = {}) {
     id: overrides.id || createId("character"),
     avatar: avatar.slice(0, 2),
     avatarImage: overrides.avatarImage || "",
+    bannerImage: overrides.bannerImage || "",
     avatarClass: overrides.avatarClass || "custom",
     name,
     label: overrides.label || "自定义角色",
@@ -1387,6 +1453,15 @@ function renderHeader() {
       <span class="active-title">${escapeHtml(character.name)}</span>
     </span>
   `;
+}
+
+function renderCharacterBanner() {
+  const character = getActiveCharacter();
+  const bannerImage = getCharacterBannerImage(character);
+  const hasBanner = Boolean(bannerImage);
+
+  refs.characterBanner.classList.toggle("has-banner", hasBanner);
+  refs.characterBanner.innerHTML = hasBanner ? `<img src="${escapeHtml(bannerImage)}" alt="" />` : "";
 }
 
 function renderMessages(options = {}) {
@@ -1462,6 +1537,7 @@ function renderInspector() {
   refs.characterRules.value = character.rules || "";
   refs.characterGreeting.value = character.greeting || "";
   renderCharacterAvatarPreview(character);
+  renderCharacterBannerPreview(character);
   refs.personaName.value = state.persona.name;
   refs.personaDescription.value = state.persona.description;
   refs.apiProviderSelect.value = state.settings.apiProvider;
@@ -1472,10 +1548,11 @@ function renderInspector() {
   refs.apiSourceNote.textContent = isCustomProvider
     ? "自定义接口需要手动填写 OpenAI-compatible Base URL。"
     : `已自动识别为 ${providerConfig.label}。`;
-  refs.apiKeyInput.value = getSessionApiKey();
+  refs.apiKeyInput.value = getAccountApiKey();
   refs.temperatureInput.value = state.settings.temperature;
   refs.temperatureValue.textContent = state.settings.temperature;
   refs.streamToggle.checked = state.settings.stream;
+  renderBackgroundControls();
 }
 
 function renderCharacterAvatarPreview(character) {
@@ -1488,6 +1565,35 @@ function renderCharacterAvatarPreview(character) {
     .filter(Boolean)
     .join(" ");
   refs.characterAvatarPreview.innerHTML = renderAvatarContent(character);
+}
+
+function renderCharacterBannerPreview(character) {
+  const bannerImage = getCharacterBannerImage(character);
+  const hasBanner = Boolean(bannerImage);
+
+  refs.characterBannerPreviewBtn.classList.toggle("has-banner", hasBanner);
+  refs.characterBannerPreviewBtn.style.backgroundImage = "";
+  refs.characterBannerPreviewBtn.innerHTML = hasBanner
+    ? `<img src="${escapeHtml(bannerImage)}" alt="" />`
+    : `<span class="banner-preview-empty" id="characterBannerPreviewText">透明横幅</span>`;
+  refs.characterBannerPreviewText = refs.characterBannerPreviewBtn.querySelector("#characterBannerPreviewText");
+  refs.characterBannerStatusText.textContent = hasBanner
+    ? "横幅只对当前角色生效，并会随角色一起保存。"
+    : "默认透明；上传后只对当前角色生效。";
+  refs.clearCharacterBannerBtn.disabled = !hasBanner;
+}
+
+function renderBackgroundControls() {
+  const backgroundImage = getBackgroundImage();
+  const hasBackground = Boolean(backgroundImage);
+
+  refs.backgroundPreviewBtn.classList.toggle("has-background", hasBackground);
+  refs.backgroundPreviewBtn.style.backgroundImage = hasBackground ? `url(${JSON.stringify(backgroundImage)})` : "";
+  refs.backgroundPreviewText.textContent = hasBackground ? "当前背景" : "空白背景";
+  refs.backgroundStatusText.textContent = hasBackground
+    ? "背景已保存到账号数据中；可随时上传新图或移除。"
+    : "当前为空白背景；上传后会保存到账号数据中。";
+  refs.clearBackgroundBtn.disabled = !hasBackground;
 }
 
 function renderDashboardSummary() {
@@ -1723,7 +1829,7 @@ function buildChatPayload(chat, pendingMessageId, character) {
     stream: state.settings.stream,
     apiConfig: {
       baseUrl: state.settings.apiBaseUrl,
-      apiKey: getSessionApiKey(),
+      apiKey: getAccountApiKey(),
     },
     character: buildPromptCharacter(character),
     persona: state.persona,
@@ -1795,7 +1901,72 @@ function getApiUrl() {
   return "/api/chat/completions";
 }
 
-function getSessionApiKey() {
+function normalizeApiKeySettings() {
+  state.settings.apiKeys = normalizeApiKeys(state.settings.apiKeys);
+
+  if (typeof state.settings.apiKey === "string" && state.settings.apiKey.trim()) {
+    const providerKey = getApiKeyProviderKey();
+    if (!state.settings.apiKeys[providerKey]) {
+      state.settings.apiKeys[providerKey] = state.settings.apiKey.trim();
+    }
+  }
+
+  delete state.settings.apiKey;
+}
+
+function normalizeApiKeys(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+
+  return Object.fromEntries(
+    Object.entries(value)
+      .map(([provider, key]) => [String(provider || "").trim(), typeof key === "string" ? key.trim() : ""])
+      .filter(([provider, key]) => provider && key),
+  );
+}
+
+function getApiKeyProviderKey(provider = state.settings.apiProvider) {
+  return provider || "custom";
+}
+
+function getAccountApiKey(provider = state.settings.apiProvider) {
+  normalizeApiKeySettings();
+  return state.settings.apiKeys[getApiKeyProviderKey(provider)] || "";
+}
+
+function setAccountApiKey(value, provider = state.settings.apiProvider) {
+  normalizeApiKeySettings();
+  const providerKey = getApiKeyProviderKey(provider);
+  const key = value.trim();
+
+  if (key) {
+    state.settings.apiKeys[providerKey] = key;
+  } else {
+    delete state.settings.apiKeys[providerKey];
+  }
+
+  clearLegacySessionApiKey();
+  saveState();
+  renderAuth();
+}
+
+function migrateLegacySessionApiKey() {
+  const legacyKey = getLegacySessionApiKey();
+  if (!legacyKey) return false;
+
+  normalizeApiKeySettings();
+  const providerKey = getApiKeyProviderKey();
+  let changed = false;
+
+  if (!state.settings.apiKeys[providerKey]) {
+    state.settings.apiKeys[providerKey] = legacyKey;
+    changed = true;
+  }
+
+  clearLegacySessionApiKey();
+  return changed;
+}
+
+function getLegacySessionApiKey() {
   try {
     return window.sessionStorage.getItem(API_KEY_SESSION_KEY) || "";
   } catch (error) {
@@ -1803,16 +1974,11 @@ function getSessionApiKey() {
   }
 }
 
-function setSessionApiKey(value) {
+function clearLegacySessionApiKey() {
   try {
-    const key = value.trim();
-    if (key) {
-      window.sessionStorage.setItem(API_KEY_SESSION_KEY, key);
-    } else {
-      window.sessionStorage.removeItem(API_KEY_SESSION_KEY);
-    }
+    window.sessionStorage.removeItem(API_KEY_SESSION_KEY);
   } catch (error) {
-    console.warn("无法保存 API Key 到当前会话。", error);
+    console.warn("无法清理旧的浏览器会话 API Key。", error);
   }
 }
 
@@ -1890,6 +2056,7 @@ function completeAuth(data, options = {}) {
     const migratedMessages = migrateDefaultMessages();
     const migratedMessageCharacterIds = migrateMessageCharacterIds();
     const splitMixedChats = splitMixedCharacterChats();
+    const migratedLegacyApiKey = migrateLegacySessionApiKey();
     ensureStateIntegrity();
     saveState({ localOnly: true });
     if (
@@ -1899,7 +2066,8 @@ function completeAuth(data, options = {}) {
       hydratedDetails ||
       migratedMessages ||
       migratedMessageCharacterIds ||
-      splitMixedChats
+      splitMixedChats ||
+      migratedLegacyApiKey
     ) {
       scheduleRemoteStateSave();
     }
@@ -1976,7 +2144,7 @@ function renderAuth(statusText = "") {
         ? "正在保存到服务器..."
         : authState.lastSavedAt
           ? `已登录，最近保存：${authState.lastSavedAt}`
-          : "已登录。配置、会话和头像会自动保存到服务器。");
+          : "已登录。配置、会话、头像和 API Key 会自动保存到账号数据。");
     return;
   }
 
@@ -1985,13 +2153,15 @@ function renderAuth(statusText = "") {
   refs.authStatusText.textContent =
     statusText ||
     (authState.mode === "register"
-      ? "注册会把当前本地配置、会话和头像作为初始数据保存到服务器。"
-      : "登录后会拉取服务器保存的配置、会话和头像。");
+      ? "注册会把当前本地配置、会话、头像和 API Key 作为初始数据保存到服务器。"
+      : "登录后会拉取服务器保存的配置、会话、头像和 API Key。");
 }
 
 async function submitAuth(event) {
   event.preventDefault();
   if (authState.token) return;
+
+  migrateLegacySessionApiKey();
 
   const username = refs.authUsernameInput.value.trim();
   const password = refs.authPasswordInput.value;
@@ -1999,7 +2169,7 @@ async function submitAuth(event) {
   const payload = {
     username,
     password,
-    ...(authState.mode === "register" ? { initialState: serializeState() } : {}),
+    ...(authState.mode === "register" ? { initialState: serializeState({ includeAccountSecrets: true }) } : {}),
   };
 
   refs.authSubmitBtn.disabled = true;
@@ -2056,7 +2226,7 @@ async function saveRemoteState() {
     await fetchAuthJson("/api/state", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ state: serializeState() }),
+      body: JSON.stringify({ state: serializeState({ includeAccountSecrets: true }) }),
     });
     authState.lastSavedAt = new Date().toLocaleTimeString("zh-CN", {
       hour: "2-digit",
@@ -2324,6 +2494,75 @@ function clearCharacterAvatar() {
   renderCharacterAvatarPreview(character);
 }
 
+function updateCharacterBannerFromFile(event) {
+  const [file] = event.target.files;
+  if (!file) return;
+
+  if (!file.type.startsWith("image/")) {
+    showToast("请选择图片文件");
+    refs.characterBannerInput.value = "";
+    return;
+  }
+
+  createBannerImageData(file)
+    .then((bannerImage) => {
+      const character = getActiveCharacter();
+      if (!character) return;
+      character.bannerImage = bannerImage;
+      saveState();
+      renderCharacterBanner();
+      renderCharacterBannerPreview(character);
+      showToast("角色横幅已更新");
+    })
+    .catch(() => showToast("角色横幅读取失败"))
+    .finally(() => {
+      refs.characterBannerInput.value = "";
+    });
+}
+
+function clearCharacterBanner() {
+  const character = getActiveCharacter();
+  if (!character) return;
+
+  character.bannerImage = "";
+  saveState();
+  renderCharacterBanner();
+  renderCharacterBannerPreview(character);
+  showToast("角色横幅已恢复透明");
+}
+
+function updateBackgroundFromFile(event) {
+  const [file] = event.target.files;
+  if (!file) return;
+
+  if (!file.type.startsWith("image/")) {
+    showToast("请选择图片文件");
+    refs.backgroundFileInput.value = "";
+    return;
+  }
+
+  createBackgroundImageData(file)
+    .then((backgroundImage) => {
+      state.settings.backgroundImage = backgroundImage;
+      saveState();
+      applyBackgroundImage();
+      renderBackgroundControls();
+      showToast("背景已更新");
+    })
+    .catch(() => showToast("背景读取失败"))
+    .finally(() => {
+      refs.backgroundFileInput.value = "";
+    });
+}
+
+function clearBackgroundImage() {
+  state.settings.backgroundImage = "";
+  saveState();
+  applyBackgroundImage();
+  renderBackgroundControls();
+  showToast("背景已恢复为空白");
+}
+
 function createAvatarImageData(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -2354,6 +2593,74 @@ function cropAvatarImage(image) {
   }
   context.drawImage(image, sourceX, sourceY, edge, edge, 0, 0, size, size);
 
+  return canvas.toDataURL("image/jpeg", 0.86);
+}
+
+function createBackgroundImageData(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.addEventListener("load", () => {
+      const image = new Image();
+      image.addEventListener("load", () => resolve(resizeBackgroundImage(image)));
+      image.addEventListener("error", reject);
+      image.src = reader.result;
+    });
+    reader.addEventListener("error", reject);
+    reader.readAsDataURL(file);
+  });
+}
+
+function resizeBackgroundImage(image) {
+  const maxWidth = 1920;
+  const maxHeight = 1080;
+  const ratio = Math.min(1, maxWidth / image.naturalWidth, maxHeight / image.naturalHeight);
+  const width = Math.max(1, Math.round(image.naturalWidth * ratio));
+  const height = Math.max(1, Math.round(image.naturalHeight * ratio));
+  const canvas = document.createElement("canvas");
+  const context = canvas.getContext("2d");
+
+  canvas.width = width;
+  canvas.height = height;
+  if (!context || image.naturalWidth <= 0 || image.naturalHeight <= 0) {
+    throw new Error("Background image could not be decoded.");
+  }
+
+  context.drawImage(image, 0, 0, width, height);
+  return canvas.toDataURL("image/jpeg", 0.82);
+}
+
+function createBannerImageData(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.addEventListener("load", () => {
+      const image = new Image();
+      image.addEventListener("load", () => resolve(resizeBannerImage(image)));
+      image.addEventListener("error", reject);
+      image.src = reader.result;
+    });
+    reader.addEventListener("error", reject);
+    reader.readAsDataURL(file);
+  });
+}
+
+function resizeBannerImage(image) {
+  const targetWidth = 1600;
+  const targetHeight = 500;
+  const ratio = Math.min(1, targetWidth / image.naturalWidth, targetHeight / image.naturalHeight);
+  const width = Math.max(1, Math.round(image.naturalWidth * ratio));
+  const height = Math.max(1, Math.round(image.naturalHeight * ratio));
+  const canvas = document.createElement("canvas");
+  const context = canvas.getContext("2d");
+
+  if (!context || image.naturalWidth <= 0 || image.naturalHeight <= 0) {
+    throw new Error("Banner image could not be decoded.");
+  }
+
+  canvas.width = width;
+  canvas.height = height;
+  context.drawImage(image, 0, 0, width, height);
   return canvas.toDataURL("image/jpeg", 0.86);
 }
 
@@ -2409,6 +2716,7 @@ function normalizeCharacter(raw) {
     id: typeof raw.id === "string" ? raw.id : undefined,
     avatar: String(raw.avatarText || raw.avatar || name.slice(0, 1) || "角").trim(),
     avatarImage: String(raw.avatarImage || raw.avatar_image || raw.image || raw.image_url || "").trim(),
+    bannerImage: String(raw.bannerImage || raw.banner_image || raw.headerImage || raw.header_image || raw.coverImage || raw.cover_image || "").trim(),
     avatarClass: "custom",
     name,
     label: String(raw.label || raw.creator_notes || raw.creator || "导入自定义角色").trim(),
@@ -2654,6 +2962,14 @@ refs.characterAvatarPreviewBtn.addEventListener("click", () => refs.characterAva
 refs.uploadCharacterAvatarBtn.addEventListener("click", () => refs.characterAvatarInput.click());
 refs.clearCharacterAvatarBtn.addEventListener("click", clearCharacterAvatar);
 refs.characterAvatarInput.addEventListener("change", updateCharacterAvatarFromFile);
+refs.characterBannerPreviewBtn.addEventListener("click", () => refs.characterBannerInput.click());
+refs.uploadCharacterBannerBtn.addEventListener("click", () => refs.characterBannerInput.click());
+refs.clearCharacterBannerBtn.addEventListener("click", clearCharacterBanner);
+refs.characterBannerInput.addEventListener("change", updateCharacterBannerFromFile);
+refs.backgroundPreviewBtn.addEventListener("click", () => refs.backgroundFileInput.click());
+refs.uploadBackgroundBtn.addEventListener("click", () => refs.backgroundFileInput.click());
+refs.clearBackgroundBtn.addEventListener("click", clearBackgroundImage);
+refs.backgroundFileInput.addEventListener("change", updateBackgroundFromFile);
 refs.clearChatBtn.addEventListener("click", clearCurrentChat);
 refs.deleteChatBtn.addEventListener("click", deleteCurrentChat);
 refs.sendBtn.addEventListener("click", sendMessage);
@@ -2736,7 +3052,7 @@ refs.apiBaseUrlInput.addEventListener("change", () => {
 });
 
 refs.apiKeyInput.addEventListener("input", () => {
-  setSessionApiKey(refs.apiKeyInput.value);
+  setAccountApiKey(refs.apiKeyInput.value);
 });
 
 refs.streamToggle.addEventListener("change", () => {

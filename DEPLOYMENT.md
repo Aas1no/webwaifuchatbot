@@ -66,7 +66,7 @@ PERSONACHAT_DATA_DIR=/opt/personachat/shared/data
     .env
 ```
 
-`shared/data` 是正式数据目录，不要删除。以后每次更新只替换代码，不会覆盖用户数据。
+`shared/data` 是正式数据目录，不要删除。以后每次更新只替换代码，不会覆盖用户数据。网页里保存的账号配置和 API Key 也会写入这里，请限制服务器文件权限并避免公开备份。
 
 ## 如果你使用 systemd
 

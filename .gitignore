@@ -6,7 +6,7 @@ deploy.config.ps1
 dist/
 runtime/
 personachat-preview.png
-personachat-mobile-preview.png
+personachat-*-preview.png
 .personachat-data/
 local-runtime/
 upload-package/
