@@ -379,6 +379,7 @@ function buildMessages(payload) {
         character.scenario ? `场景：${character.scenario}` : "",
         character.speakingStyle ? `说话风格：${character.speakingStyle}` : "",
         character.knowledge ? `世界信息：${character.knowledge}` : "",
+        character.longTermMemory ? `长期记忆：${character.longTermMemory}` : "",
         character.examples ? `示例对话：${character.examples}` : "",
         character.rules ? `行为规则：${character.rules}` : "",
         persona.name || persona.description

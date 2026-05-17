@@ -92,7 +92,7 @@ $packageItems = @(
     "index.html",
     "app.js",
     "styles.css",
-    "anju-avatar.png",
+    "liliko-avatar.png",
     "package.json",
     "README.md",
     "start-server.ps1",
