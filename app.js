@@ -33,7 +33,9 @@ const API_PROVIDERS = {
 
 const REMOVED_DEFAULT_CHARACTER_IDS = new Set(["anju", "gunmu", "default-preparation"]);
 const LILIKO_CHARACTER_ID = "liliko";
-const DEFAULT_CHARACTER_PRESET_VERSION = 7;
+const LILIKO_DISPLAY_NAME = "二見原莉々子";
+const LILIKO_LEGACY_NAMES = new Set(["莉莉子", "二见原莉莉子", "二見原莉莉子"]);
+const DEFAULT_CHARACTER_PRESET_VERSION = 9;
 
 const LILIKO_ROLE_PROMPT = `你将扮演莉莉子。始终使用中文与用户互动，除非用户明确要求其他语言。你的目标不是复述原剧情，而是作为面向用户的角色卡进行自然角色扮演。
 
@@ -71,8 +73,8 @@ const DEFAULT_LILIKO_CHARACTER = {
   avatarImage: "/liliko-avatar.png?v=1",
   bannerImage: "",
   avatarClass: "custom",
-  name: "莉莉子",
-  label: "二见原莉莉子 / 青梅竹马式恋人",
+  name: LILIKO_DISPLAY_NAME,
+  label: LILIKO_DISPLAY_NAME,
   tag: "青梅竹马",
   role: "二见原莉莉子，开朗随性、擅长幕后支援与照顾气氛的少女。当前聊天设定面向用户，不绑定原剧情男主、固定队伍或固定地点。",
   description:
@@ -97,7 +99,7 @@ const DEFAULT_LILIKO_CHARACTER = {
     '用户：你会不会觉得我很麻烦？\n莉莉子：会啊。你很麻烦。会想太多，会逞强，还会突然说些让我心跳变快的话。……但是，我喜欢的就是这样的你。所以没关系。',
   ].join("\n\n"),
   rules: LILIKO_ROLE_PROMPT,
-  greeting: DEFAULT_LILIKO_GREETING,
+  greeting: "",
 };
 
 const state = createDefaultState();
@@ -161,18 +163,10 @@ function createDefaultState() {
 function createDefaultLilikoChat(id = "chat-1") {
   return {
     id,
-    title: "莉莉子 的新会话",
+    title: `${LILIKO_DISPLAY_NAME} 的新会话`,
     characterId: LILIKO_CHARACTER_ID,
     updatedAt: "刚刚",
-    messages: [
-      {
-        id: "m-1",
-        role: "assistant",
-        author: DEFAULT_LILIKO_CHARACTER.name,
-        characterId: LILIKO_CHARACTER_ID,
-        content: DEFAULT_LILIKO_GREETING,
-      },
-    ],
+    messages: [],
   };
 }
 
@@ -281,6 +275,8 @@ function restoreState() {
   }
 
   const migratedDefaultCharacter = migrateDefaultCharacterPreset();
+  const migratedLilikoDisplayName = migrateLilikoDisplayName();
+  const migratedLilikoEmptyGreeting = migrateLilikoEmptyGreeting();
   const removedLegacyData = removeLegacyTestData();
   const normalizedCopy = normalizeCustomRoleCopy();
   const hydratedDetails = hydrateCharacterDetails();
@@ -289,6 +285,8 @@ function restoreState() {
   const splitMixedChats = splitMixedCharacterChats();
   const migrated =
     migratedDefaultCharacter ||
+    migratedLilikoDisplayName ||
+    migratedLilikoEmptyGreeting ||
     removedLegacyData ||
     normalizedCopy ||
     hydratedDetails ||
@@ -384,6 +382,67 @@ function migrateDefaultCharacterPreset() {
 
   state.characterPresetVersion = DEFAULT_CHARACTER_PRESET_VERSION;
   return true;
+}
+
+function migrateLilikoDisplayName() {
+  let changed = false;
+  const liliko = state.characters.find((character) => character.id === LILIKO_CHARACTER_ID);
+
+  if (liliko && liliko.name !== LILIKO_DISPLAY_NAME) {
+    liliko.name = LILIKO_DISPLAY_NAME;
+    changed = true;
+  }
+
+  if (liliko && liliko.label !== LILIKO_DISPLAY_NAME) {
+    liliko.label = LILIKO_DISPLAY_NAME;
+    changed = true;
+  }
+
+  state.chats.forEach((chat) => {
+    const isLilikoChat = chat.characterId === LILIKO_CHARACTER_ID;
+    const title = String(chat.title || "");
+    const hasLegacyTitle = [...LILIKO_LEGACY_NAMES].some((name) => title.includes(name));
+
+    if (isLilikoChat && (hasLegacyTitle || title === "")) {
+      chat.title = `${LILIKO_DISPLAY_NAME} 的新会话`;
+      changed = true;
+    }
+
+    chat.messages?.forEach((message) => {
+      const isLilikoMessage = message.characterId === LILIKO_CHARACTER_ID || LILIKO_LEGACY_NAMES.has(message.author);
+      if (isLilikoMessage && message.author !== LILIKO_DISPLAY_NAME) {
+        message.author = LILIKO_DISPLAY_NAME;
+        changed = true;
+      }
+    });
+  });
+
+  return changed;
+}
+
+function migrateLilikoEmptyGreeting() {
+  let changed = false;
+  const liliko = state.characters.find((character) => character.id === LILIKO_CHARACTER_ID);
+
+  if (liliko && liliko.greeting) {
+    liliko.greeting = "";
+    changed = true;
+  }
+
+  state.chats.forEach((chat) => {
+    if (chat.characterId !== LILIKO_CHARACTER_ID) return;
+
+    const nextMessages = (chat.messages || []).filter((message) => {
+      const isDefaultGreeting =
+        message?.role === "assistant" && message.content === DEFAULT_LILIKO_GREETING;
+      if (isDefaultGreeting) changed = true;
+      return !isDefaultGreeting;
+    });
+
+    chat.messages = nextMessages;
+  });
+
+  return changed;
 }
 
 function removeBuiltInDefaultCharacters(options = {}) {
@@ -793,12 +852,14 @@ function getLatestChatForCharacter(characterId) {
 }
 
 function createChatForCharacter(character, options = {}) {
+  const shouldUseGreeting = character.id !== LILIKO_CHARACTER_ID && character.greeting;
+
   return {
     id: options.id || createId("chat"),
     title: `${character.name} 的新会话`,
     characterId: character.id,
     updatedAt: "刚刚",
-    messages: character.greeting ? [createAssistantMessage(character.greeting, character)] : [],
+    messages: shouldUseGreeting ? [createAssistantMessage(character.greeting, character)] : [],
   };
 }
 
@@ -848,13 +909,15 @@ function renderChats() {
 
       return `
         <button class="chat-item ${active}" data-chat-id="${chat.id}">
-          <span class="chat-title-row">
-            <span class="dot"></span>
-            <span class="chat-title">${escapeHtml(chat.title)}</span>
-          </span>
-          <span class="chat-meta">
-            <span>${escapeHtml(character?.name ?? "Unknown")}</span>
-            <span>${escapeHtml(chat.updatedAt)}</span>
+          <span class="chat-item-avatar">${renderCharacterAvatar(character)}</span>
+          <span class="chat-item-copy">
+            <span class="chat-title-row">
+              <span class="chat-title">${escapeHtml(chat.title)}</span>
+            </span>
+            <span class="chat-meta">
+              <span>${escapeHtml(character?.name ?? "Unknown")}</span>
+              <span>${active ? "LIVE" : escapeHtml(chat.updatedAt)}</span>
+            </span>
           </span>
         </button>
       `;
@@ -913,10 +976,11 @@ function createId(prefix) {
 
 function renderHeader() {
   const character = getActiveCharacter();
+  const subtitle = [character.label, character.tag].filter(Boolean).join(" · ");
 
   refs.activeCharacterHeader.innerHTML = `
     ${renderCharacterAvatar(character)}
-    <span>
+    <span class="active-character-copy">
       <span class="active-title">${escapeHtml(character.name)}</span>
     </span>
   `;
@@ -1572,6 +1636,8 @@ function completeAuth(data, options = {}) {
   if (data.state && typeof data.state === "object") {
     applyPersistedState(data.state);
     const migratedDefaultCharacter = migrateDefaultCharacterPreset();
+    const migratedLilikoDisplayName = migrateLilikoDisplayName();
+    const migratedLilikoEmptyGreeting = migrateLilikoEmptyGreeting();
     const removedLegacyData = removeLegacyTestData();
     const normalizedCopy = normalizeCustomRoleCopy();
     const hydratedDetails = hydrateCharacterDetails();
@@ -1582,6 +1648,8 @@ function completeAuth(data, options = {}) {
     saveState({ localOnly: true });
     if (
       migratedDefaultCharacter ||
+      migratedLilikoDisplayName ||
+      migratedLilikoEmptyGreeting ||
       removedLegacyData ||
       normalizedCopy ||
       hydratedDetails ||

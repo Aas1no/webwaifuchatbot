@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>PersonaChat MVP</title>
-    <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="./styles.css?v=20260518-liliko-empty" />
   </head>
   <body>
     <svg class="sprite" aria-hidden="true">
@@ -70,19 +70,24 @@
     <div class="app-shell">
       <aside class="sidebar">
         <header class="brand-block">
-          <div class="brand-mark">PC</div>
+          <div class="brand-mark" aria-hidden="true">
+            <img src="./liliko-logo.png" alt="" />
+          </div>
           <div>
             <h1>PersonaChat</h1>
-            <p>轻量自定义角色聊天台</p>
-            <span class="build-badge">登录部署版 v0.2.0</span>
+            <p>Liliko Skin</p>
           </div>
         </header>
 
         <section class="sidebar-section">
           <div class="section-title">
-            <span>会话</span>
+            <span>
+              <strong>SESSION LIST</strong>
+              <em>会话列表</em>
+            </span>
             <button class="icon-button" id="newChatBtn" aria-label="新建会话" title="新建会话">
               <svg class="icon"><use href="#icon-plus"></use></svg>
+              <span class="button-label">新建</span>
             </button>
           </div>
           <div class="chat-list" id="chatList"></div>
@@ -90,7 +95,10 @@
 
         <section class="sidebar-section">
           <div class="section-title">
-            <span>自定义角色</span>
+            <span>
+              <strong>MEMBER</strong>
+              <em>自定义角色</em>
+            </span>
             <button class="icon-button" id="randomRoleBtn" aria-label="切换自定义角色" title="切换自定义角色">
               <svg class="icon"><use href="#icon-book"></use></svg>
             </button>
@@ -109,12 +117,15 @@
             </button>
             <button class="icon-button" id="clearChatBtn" aria-label="清空当前会话" title="清空当前会话">
               <svg class="icon"><use href="#icon-eraser"></use></svg>
+              <span class="button-label">清空</span>
             </button>
             <button class="icon-button" id="deleteChatBtn" aria-label="删除当前会话" title="删除当前会话">
               <svg class="icon"><use href="#icon-trash"></use></svg>
+              <span class="button-label">删除会话</span>
             </button>
             <button class="icon-button settings-toggle" aria-label="设置" title="设置">
               <svg class="icon"><use href="#icon-settings"></use></svg>
+              <span class="button-label">角色设置</span>
             </button>
           </div>
         </header>
@@ -159,7 +170,7 @@
           </div>
           <div class="metric-card">
             <span>当前自定义角色</span>
-            <strong id="dashboardCharacterName">莉莉子</strong>
+            <strong id="dashboardCharacterName">二見原莉々子</strong>
           </div>
         </section>
 
@@ -431,6 +442,6 @@
       </form>
     </section>
 
-    <script src="./app.js"></script>
+    <script src="./app.js?v=20260518-liliko-empty"></script>
   </body>
 </html>
