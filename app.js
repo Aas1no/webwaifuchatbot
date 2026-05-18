@@ -100,28 +100,7 @@ const DEFAULT_LILIKO_CHARACTER = {
   greeting: DEFAULT_LILIKO_GREETING,
 };
 
-const state = {
-  activeChatId: "chat-1",
-  activeCharacterId: LILIKO_CHARACTER_ID,
-  characterPresetVersion: DEFAULT_CHARACTER_PRESET_VERSION,
-  provider: "openai-compatible",
-  settings: {
-    apiProvider: "deepseek",
-    model: "deepseek-v4-flash",
-    apiBaseUrl: "https://api.deepseek.com",
-    apiKeys: {},
-    backgroundImage: "",
-    temperature: 0.7,
-    stream: true,
-  },
-  persona: {
-    id: "persona-1",
-    name: "用户",
-    description: "",
-  },
-  characters: createDefaultCharacters(),
-  chats: [createDefaultLilikoChat()],
-};
+const state = createDefaultState();
 
 const STORAGE_KEY = "personachat-state-v1";
 const API_KEY_SESSION_KEY = "personachat-api-key";
@@ -154,6 +133,31 @@ function createDefaultCharacters() {
   return [cloneDefaultLilikoCharacter()];
 }
 
+function createDefaultState() {
+  return {
+    activeChatId: "chat-1",
+    activeCharacterId: LILIKO_CHARACTER_ID,
+    characterPresetVersion: DEFAULT_CHARACTER_PRESET_VERSION,
+    provider: "openai-compatible",
+    settings: {
+      apiProvider: "deepseek",
+      model: "deepseek-v4-flash",
+      apiBaseUrl: "https://api.deepseek.com",
+      apiKeys: {},
+      backgroundImage: "",
+      temperature: 0.7,
+      stream: true,
+    },
+    persona: {
+      id: "persona-1",
+      name: "用户",
+      description: "",
+    },
+    characters: createDefaultCharacters(),
+    chats: [createDefaultLilikoChat()],
+  };
+}
+
 function createDefaultLilikoChat(id = "chat-1") {
   return {
     id,
@@ -172,6 +176,7 @@ function createDefaultLilikoChat(id = "chat-1") {
   };
 }
 
+restoreAuthSession();
 restoreState();
 
 const refs = {
@@ -264,7 +269,10 @@ const refs = {
 
 function restoreState() {
   try {
-    const saved = JSON.parse(window.localStorage.getItem(STORAGE_KEY));
+    const storageKey = getAccountStateStorageKey();
+    if (!storageKey) return;
+
+    const saved = JSON.parse(window.localStorage.getItem(storageKey));
     if (!saved || typeof saved !== "object") return;
 
     applyPersistedState(saved);
@@ -289,6 +297,19 @@ function restoreState() {
     splitMixedChats;
   ensureStateIntegrity();
   if (migrated) saveState();
+}
+
+function resetState(nextState = createDefaultState()) {
+  Object.keys(state).forEach((key) => {
+    delete state[key];
+  });
+  Object.assign(state, nextState);
+}
+
+function getAccountStateStorageKey(username = authState.username) {
+  const usernameKey = String(username || "").trim().toLowerCase();
+  if (!authState.token || !usernameKey) return "";
+  return `${STORAGE_KEY}:${encodeURIComponent(usernameKey)}`;
 }
 
 function applyPersistedState(saved) {
@@ -341,7 +362,12 @@ function serializeState(options = {}) {
 
 function saveState(options = {}) {
   try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(serializeState()));
+    const storageKey = getAccountStateStorageKey();
+    if (storageKey) {
+      window.localStorage.setItem(storageKey, JSON.stringify(serializeState()));
+    } else {
+      window.localStorage.removeItem(STORAGE_KEY);
+    }
   } catch (error) {
     console.warn("无法保存到本地存储。", error);
   }
@@ -1465,31 +1491,6 @@ function setAccountApiKey(value, provider = state.settings.apiProvider) {
   renderAuth();
 }
 
-function migrateLegacySessionApiKey() {
-  const legacyKey = getLegacySessionApiKey();
-  if (!legacyKey) return false;
-
-  normalizeApiKeySettings();
-  const providerKey = getApiKeyProviderKey();
-  let changed = false;
-
-  if (!state.settings.apiKeys[providerKey]) {
-    state.settings.apiKeys[providerKey] = legacyKey;
-    changed = true;
-  }
-
-  clearLegacySessionApiKey();
-  return changed;
-}
-
-function getLegacySessionApiKey() {
-  try {
-    return window.sessionStorage.getItem(API_KEY_SESSION_KEY) || "";
-  } catch (error) {
-    return "";
-  }
-}
-
 function clearLegacySessionApiKey() {
   try {
     window.sessionStorage.removeItem(API_KEY_SESSION_KEY);
@@ -1553,6 +1554,8 @@ async function initRemoteSession() {
     completeAuth(data, { silent: true });
   } catch (error) {
     clearAuthSession();
+    resetState();
+    render();
     renderAuth("登录已过期，请重新登录。");
   }
 }
@@ -1561,7 +1564,10 @@ function completeAuth(data, options = {}) {
   authState.token = data.token || authState.token;
   authState.username = data.user?.username || authState.username;
   authState.remoteReady = true;
+  authState.lastSavedAt = "";
   persistAuthSession();
+
+  resetState();
 
   if (data.state && typeof data.state === "object") {
     applyPersistedState(data.state);
@@ -1572,7 +1578,6 @@ function completeAuth(data, options = {}) {
     const migratedMessages = migrateDefaultMessages();
     const migratedMessageCharacterIds = migrateMessageCharacterIds();
     const splitMixedChats = splitMixedCharacterChats();
-    const migratedLegacyApiKey = migrateLegacySessionApiKey();
     ensureStateIntegrity();
     saveState({ localOnly: true });
     if (
@@ -1582,11 +1587,14 @@ function completeAuth(data, options = {}) {
       hydratedDetails ||
       migratedMessages ||
       migratedMessageCharacterIds ||
-      splitMixedChats ||
-      migratedLegacyApiKey
+      splitMixedChats
     ) {
       scheduleRemoteStateSave();
     }
+  } else {
+    ensureStateIntegrity();
+    saveState({ localOnly: true });
+    scheduleRemoteStateSave();
   }
 
   render();
@@ -1607,6 +1615,7 @@ function clearAuthSession() {
   authState.syncQueued = false;
   authState.lastSavedAt = "";
   persistAuthSession();
+  clearLegacySessionApiKey();
 }
 
 function openAuthPanel(mode = authState.mode) {
@@ -1650,7 +1659,7 @@ function renderAuth(statusText = "") {
   refs.authModeRegisterBtn.classList.toggle("active", authState.mode === "register");
   refs.authSubmitBtn.hidden = loggedIn;
   refs.authLogoutBtn.hidden = !loggedIn;
-  refs.authSubmitBtn.textContent = authState.mode === "register" ? "注册并保存当前数据" : "登录并同步";
+  refs.authSubmitBtn.textContent = authState.mode === "register" ? "注册并创建新空间" : "登录并同步";
 
   if (loggedIn) {
     refs.authUsernameInput.value = authState.username;
@@ -1669,15 +1678,13 @@ function renderAuth(statusText = "") {
   refs.authStatusText.textContent =
     statusText ||
     (authState.mode === "register"
-      ? "注册会把当前本地配置、会话、头像和 API Key 作为初始数据保存到服务器。"
-      : "登录后会拉取服务器保存的配置、会话、头像和 API Key。");
+      ? "注册会创建全新的独立账号空间，不继承当前角色、会话和配置。"
+      : "");
 }
 
 async function submitAuth(event) {
   event.preventDefault();
   if (authState.token) return;
-
-  migrateLegacySessionApiKey();
 
   const username = refs.authUsernameInput.value.trim();
   const password = refs.authPasswordInput.value;
@@ -1685,7 +1692,6 @@ async function submitAuth(event) {
   const payload = {
     username,
     password,
-    ...(authState.mode === "register" ? { initialState: serializeState({ includeAccountSecrets: true }) } : {}),
   };
 
   refs.authSubmitBtn.disabled = true;
@@ -1711,9 +1717,11 @@ async function logoutAuth() {
   }
 
   clearAuthSession();
+  resetState();
+  render();
   refs.authPanel.hidden = false;
   renderAuth();
-  showToast("已退出登录，本地内容仍保留");
+  showToast("已退出登录");
 }
 
 function scheduleRemoteStateSave() {
@@ -1751,6 +1759,8 @@ async function saveRemoteState() {
   } catch (error) {
     if (/登录|过期|401/.test(error.message || "")) {
       clearAuthSession();
+      resetState();
+      render();
       showToast("登录已过期，请重新登录");
     } else {
       console.warn("服务器保存失败：", error);
@@ -2621,7 +2631,6 @@ document.querySelectorAll("[data-model]").forEach((button) => {
 });
 
 render();
-restoreAuthSession();
 renderAuth();
 syncViewFromHash();
 initRemoteSession();

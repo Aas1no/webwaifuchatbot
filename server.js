@@ -19,6 +19,8 @@ const PASSWORD_ITERATIONS = 160000;
 const MIME_TYPES = {
   ".css": "text/css; charset=utf-8",
   ".html": "text/html; charset=utf-8",
+  ".jpeg": "image/jpeg",
+  ".jpg": "image/jpeg",
   ".js": "text/javascript; charset=utf-8",
   ".json": "application/json; charset=utf-8",
   ".png": "image/png",
@@ -166,7 +168,7 @@ async function handleRegister(req, res) {
   users.byName[usernameKey] = user;
   await writeUsers(users);
 
-  const initialState = sanitizeClientState(payload.initialState);
+  const initialState = {};
   await saveUserState(user.id, initialState);
 
   sendJson(res, 201, {

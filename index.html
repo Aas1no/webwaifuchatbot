@@ -399,30 +399,35 @@
 
     <section class="auth-panel" id="authPanel" aria-label="账号登录" hidden>
       <form class="auth-dialog" id="authForm">
-        <header class="auth-dialog-header">
-          <div>
-            <span class="dashboard-eyebrow">Account</span>
-            <h2 id="authDialogTitle">登录账号</h2>
-          </div>
-          <button class="icon-button" id="authCloseBtn" type="button" aria-label="关闭" title="关闭">
-            <svg class="icon"><use href="#icon-arrow-left"></use></svg>
-          </button>
-        </header>
-        <div class="auth-tabs" role="tablist" aria-label="账号模式">
-          <button class="auth-tab active" id="authModeLoginBtn" type="button" data-auth-mode="login">登录</button>
-          <button class="auth-tab" id="authModeRegisterBtn" type="button" data-auth-mode="register">注册</button>
+        <div class="auth-visual" aria-hidden="true">
+          <span class="auth-visual-badge">PersonaChat</span>
         </div>
-        <label>
-          账号
-          <input id="authUsernameInput" type="text" autocomplete="username" placeholder="3-32 位账号" />
-        </label>
-        <label>
-          密码
-          <input id="authPasswordInput" type="password" autocomplete="current-password" placeholder="至少 6 位" />
-        </label>
-        <p class="auth-status" id="authStatusText">登录后，配置、会话、头像和 API Key 会保存到服务器。</p>
-        <button class="auth-submit" id="authSubmitBtn" type="submit">登录并同步</button>
-        <button class="auth-logout" id="authLogoutBtn" type="button" hidden>退出登录</button>
+        <div class="auth-content">
+          <header class="auth-dialog-header">
+            <div>
+              <span class="dashboard-eyebrow">Account</span>
+              <h2 id="authDialogTitle">登录账号</h2>
+            </div>
+            <button class="icon-button" id="authCloseBtn" type="button" aria-label="关闭" title="关闭">
+              <svg class="icon"><use href="#icon-arrow-left"></use></svg>
+            </button>
+          </header>
+          <div class="auth-tabs" role="tablist" aria-label="账号模式">
+            <button class="auth-tab active" id="authModeLoginBtn" type="button" data-auth-mode="login">登录</button>
+            <button class="auth-tab" id="authModeRegisterBtn" type="button" data-auth-mode="register">注册</button>
+          </div>
+          <label>
+            账号
+            <input id="authUsernameInput" type="text" autocomplete="username" placeholder="3-32 位账号" />
+          </label>
+          <label>
+            密码
+            <input id="authPasswordInput" type="password" autocomplete="current-password" placeholder="至少 6 位" />
+          </label>
+          <p class="auth-status" id="authStatusText"></p>
+          <button class="auth-submit" id="authSubmitBtn" type="submit">登录并同步</button>
+          <button class="auth-logout" id="authLogoutBtn" type="button" hidden>退出登录</button>
+        </div>
       </form>
     </section>
 
