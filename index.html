@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>PersonaChat MVP</title>
-    <link rel="stylesheet" href="./styles.css?v=20260518-liliko-empty" />
+    <link rel="stylesheet" href="./styles.css?v=20260519-default-wan" />
   </head>
   <body>
     <svg class="sprite" aria-hidden="true">
@@ -314,19 +314,9 @@
                 </span>
               </div>
             </div>
-            <div class="form-grid two">
-              <label>
-                名称
-                <input id="characterName" type="text" />
-              </label>
-              <label>
-                类型标签
-                <input id="characterTag" type="text" />
-              </label>
-            </div>
             <label>
-              列表说明
-              <input id="characterLabel" type="text" />
+              名称
+              <input id="characterName" type="text" />
             </label>
           </div>
           <div class="character-form-section">
@@ -367,7 +357,12 @@
               <textarea id="characterKnowledge" rows="4"></textarea>
             </label>
             <label>
-              长期记忆
+              <span class="field-label-row">
+                <span>长期记忆</span>
+                <button class="icon-button danger-icon" id="clearAllMemoryBtn" type="button" aria-label="清除所有记忆" title="清除所有记忆">
+                  <svg class="icon"><use href="#icon-trash"></use></svg>
+                </button>
+              </span>
               <textarea id="characterLongTermMemory" rows="4"></textarea>
               <span class="field-note">随账号保存，并会注入这个角色的后续回复。聊天时输入“记住：……”会自动追加到这里。</span>
             </label>
@@ -397,8 +392,8 @@
             </button>
           </div>
           <label>
-            昵称
-            <input id="personaName" type="text" />
+            账号名
+            <input id="personaName" type="text" readonly />
           </label>
           <label>
             用户设定
@@ -442,6 +437,6 @@
       </form>
     </section>
 
-    <script src="./app.js?v=20260518-liliko-empty"></script>
+    <script src="./app.js?v=20260519-default-wan"></script>
   </body>
 </html>

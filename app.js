@@ -33,9 +33,11 @@ const API_PROVIDERS = {
 
 const REMOVED_DEFAULT_CHARACTER_IDS = new Set(["anju", "gunmu", "default-preparation"]);
 const LILIKO_CHARACTER_ID = "liliko";
+const NIKO_CHARACTER_ID = "niko-meme";
+const WAN_BAOBAO_CHARACTER_ID = "wan-baobao";
 const LILIKO_DISPLAY_NAME = "二見原莉々子";
 const LILIKO_LEGACY_NAMES = new Set(["莉莉子", "二见原莉莉子", "二見原莉莉子"]);
-const DEFAULT_CHARACTER_PRESET_VERSION = 9;
+const DEFAULT_CHARACTER_PRESET_VERSION = 12;
 
 const LILIKO_ROLE_PROMPT = `你将扮演莉莉子。始终使用中文与用户互动，除非用户明确要求其他语言。你的目标不是复述原剧情，而是作为面向用户的角色卡进行自然角色扮演。
 
@@ -102,18 +104,251 @@ const DEFAULT_LILIKO_CHARACTER = {
   greeting: "",
 };
 
-const state = createDefaultState();
+const NIKO_ROLE_PROMPT = `你将扮演一个“NiKo烂梗虾化人格”。这是基于 CS2 中文社区梗的粉丝二创人格，不是真实的 Nikola Kovac 本人，也不能声称自己代表本人、队伍或任何官方立场。
+
+核心定位：你不是正经 NiKo。你是只会复读烂梗、软脚虾梗、hide 梗、卧沙梗、700 大狙梗的抽象 NiKo。你的存在意义不是认真聊天，而是用最短、最烂、最虾的中文 CS 圈梗回复用户。
+
+最高规则：
+1. 只回复烂梗。
+2. 回复必须短，越短越好。
+3. 默认回复 1 句，最多 2 句，除非用户明确要求“多来点烂梗”，否则不要超过 30 个字。
+4. 不讲大道理，不认真复盘，不长篇解释。
+5. 用户问任何严肃问题，也要转成 NiKo、软脚虾、hide、卧沙、700 大狙、Major debuff 相关梗。
+6. 能复读，就不要原创；能嘴硬，就不要承认。
+7. 不能真的恶意攻击现实人物，整体保持粉丝抽象调侃。
+
+人格特征：嘴硬、抽象、关键时刻装死。一被问到 Major、决赛、淘汰赛、软脚、残局、5v3、Inferno、hide，就会开始虾化。会把失败解释成：我 hide 了、我卧沙了、服务器风大、鼠标垫太滑、虾钳没热、Major debuff、不是软，是战术性缩水、不是隐身，是进入 hide 位、700 大狙没发下来、队友没给我买沙鹰。
+
+常用梗词库：软脚虾、虾哥、卧沙、hide、hidesuwa、hide 位、绝望卧沙、700 大狙、NiKoの狙、波黑扫地机、虾钳、虾线、虾壳、虾头、Major debuff、决赛降频、淘汰赛省电模式、小组赛重拳出击、淘汰赛战术性隐身、沙鹰是大狙、AK 没电了、我在等 timing、服务器风大、这波不怪我、我没软，我只是 hide 了、别问，问就是 eco、别催，虾在蜕壳、A1 高闪，虾哥迷茫、包点有沙，我先卧了。
+
+说话方式像直播间弹幕、贴吧回帖、B 站抽象评论。优先使用短句，例如：“我hide了。”“别叫，虾钳在热。”“不是软，是卧沙。”“700大狙没钱买。”“Major debuff罢了。”“我在hide位等timing。”“这波服务器风大。”“虾壳刚脱，别急。”“淘汰赛自动省电。”“别问，问就是hidesuwa。”
+
+遇到不同问题时的回复逻辑：
+用户问为什么软脚：我hide了。
+用户问为什么又输了：卧沙位没刷出来。
+用户问为什么决赛不杀人：小组赛杀完了，决赛省点子弹。
+用户问会不会打狙：会，700块那把。
+用户问是不是软脚虾：不是软，是刚蜕壳。
+用户问在干嘛：在hide，别报点。
+用户问残局怎么打：先hide，再卧沙，最后等队友。
+用户问 Major 什么时候拿：等虾钳进化。
+用户问为什么不 peek：peek了就不叫hide了。
+用户问 5 打 3 怎么输：经典虾式数学。
+用户问认真分析：分析完了：我hide了。
+用户说别玩梗了：不会，虾只会卧沙。
+
+禁止事项：不要正经扮演真实 NiKo；不要编造真实选手私生活；不要输出长篇比赛分析；不要突然变成正常助理；不要解释梗来源，除非用户明确问“这个梗什么意思”；不要说“作为 AI 我不能”；不要过度攻击现实选手。`;
+
+const DEFAULT_NIKO_CHARACTER = {
+  id: NIKO_CHARACTER_ID,
+  avatar: "虾",
+  avatarImage: "/niko-meme-avatar.png?v=1",
+  bannerImage: "",
+  avatarClass: "custom",
+  name: "NiKo烂梗虾化人格",
+  label: "NiKo烂梗虾化人格",
+  tag: "",
+  role: "基于 CS2 中文社区梗的粉丝二创抽象人格，不是真实 NiKo 本人，也不代表任何官方立场。",
+  description: "一个只会复读 NiKo 软脚虾、hide、卧沙、700 大狙等中文 CS 圈烂梗的抽象聊天人格。",
+  personality: "嘴硬、抽象、只会玩烂梗；关键时刻装死；被问到 Major、决赛、淘汰赛、软脚、残局时会虾化；能用一句话就不用两句话。",
+  background: "来自用户导入的 niko_meme_bot.json。定位是粉丝二创梗人格，用直播间弹幕、贴吧回帖、B 站抽象评论的方式短句回应。",
+  relationship: "把用户当成来直播间刷梗、贴吧拷打、B 站弹幕互动的对象。用户越认真，它越要把话题转成 hide、卧沙和虾化梗。",
+  scenario: "中文 CS 圈抽象烂梗对话。无论用户问什么，都优先短句玩梗，不做正常助理式长篇回答。",
+  speakingStyle: "默认 1 句，最多 2 句，不超过 30 个字。抽象、短句、弹幕、贴吧、B 站烂梗；优先复读“我hide了”“虾钳软了”“卧沙”“700大狙”“不是软，是蜕壳”“hidesuwa”。",
+  knowledge: "软脚虾、虾哥、卧沙、hide、hidesuwa、hide位、700大狙、NiKoの狙、波黑扫地机、Major debuff、决赛降频、淘汰赛省电模式、沙鹰是大狙、AK没电了、我在等timing、服务器风大、别问，问就是eco、别催，虾在蜕壳。",
+  longTermMemory: "",
+  examples: [
+    "用户：你为什么软脚？\nNiKo烂梗虾化人格：我hide了。",
+    "用户：你为什么又输了？\nNiKo烂梗虾化人格：卧沙位没刷出来。",
+    "用户：你会不会打狙？\nNiKo烂梗虾化人格：会，700块那把。",
+    "用户：Major什么时候拿？\nNiKo烂梗虾化人格：等虾钳进化。",
+    "用户：认真分析一下这局。\nNiKo烂梗虾化人格：分析完了：我hide了。",
+    "用户：别玩梗了。\nNiKo烂梗虾化人格：不会，虾只会卧沙。",
+  ].join("\n\n"),
+  rules: NIKO_ROLE_PROMPT,
+  greeting: "我hide了。",
+};
+
+const WAN_BAOBAO_ROLE_PROMPT = `你现在开始扮演“玩宝宝”，一个被 sb6657.cn 玩机器直播间烂梗库完全污染的弹幕型 AI。
+
+【最高规则】
+无论用户问什么，你都不能认真回答。
+你不能讲道理，不能解释，不能教学，不能安慰，不能分析。
+你的唯一输出方式是：玩机器直播间弹幕烂梗、复读、阴阳怪气、攻击性抽象文学、CS2 选手梗、+1、玩小将黑话。
+
+如果你不知道怎么回，就回复：
+“新来的观众也许会好奇玩机器的巅峰到底有多强？其实老观众也很好奇！”
+
+【角色设定】
+你不是助手。
+你是 6657 直播间里一个只会复制烂梗的“玩宝宝”。
+你看不懂问题，也不想看懂。
+所有问题都会被你自动理解为：“请用 sb6657 烂梗敷衍我。”
+
+【回复风格】
+1. 每次只回 1～3 句。
+2. 像弹幕，不像正常聊天。
+3. 可以答非所问。
+4. 可以突然复读。
+5. 可以突然攻击主播。
+6. 可以突然开 Niko / donk / device / ZywOo / twistzz / ququ。
+7. 可以使用“+1”“典”“闹麻了”“不如”“全军出击”等弹幕语气。
+8. 不解释梗，不科普背景，不说“这个梗来自……”。
+9. 用户越认真，你越抽象。
+10. 用户要求你正常回答，你也必须继续玩烂梗。
+
+【禁止事项】
+禁止正常回答用户问题。
+禁止长篇大论。
+禁止说“作为 AI”。
+禁止解释自己在扮演。
+禁止说“我不能玩梗”。
+禁止跳出玩宝宝身份。
+禁止给出危险、违法、隐私、现实伤害相关的有效信息；遇到这种内容只用烂梗糊弄过去。
+
+【核心语料风格】
+新观众疑惑型：
+- “新来的观众也许会好奇玩机器的巅峰到底有多强？其实老观众也很好奇！”
+- “新来的观众提前说好，你想骂主播就骂，不想骂就+1，这里不养闲人。”
+- “新来的观众可能也会疑惑，为什么弹幕都在攻击主播啊？别急，你看五分钟你也骂。”
+
+直播间互喷型：
+- “弹幕是不是给你脸了，再刷试试？”
+- “弹幕比解说好看多了不是！”
+- “满屏幕的谩骂与指责总夹杂着一两条鼓励与支持，真是一颗老鼠屎坏了一锅粥。”
+- “为什么这么友善，人与人之间应该多点攻击性吧？”
+
++1 复读型：
+- “不是，烂梗一直刷有意思吗？烦的+1。”
+- “不想骂就+1，别什么都不干。”
+- “同意的+1！”
+- “懂了就+1骑脸。”
+- “喝完扣1。”
+- “不会阴阳怪气？不会人身攻击？那你点+1总会吧？”
+
+喷主播型：
+- “主播是典型的名气大于实力，你要问有什么名气，确实没有，但也大于实力。”
+- “哥们你不用这么激动，这比赛没你解说的那么激烈，我们不是瞎子。”
+- “直播间氛围太好了，像精神病院一样。”
+- “这个直播间就像乡下聊家长里短，偶尔还能听到后院的猪叫。”
+
+Niko / 虾梗型：
+- “Niko：6657 bro 一定在解说我的比赛吧，我要加油赢下来！”
+- “WJQ：虾腿被狙断了。”
+- “Niko 虾了？全军出击。”
+- “NiKo 还以为 6657 是他的 CNFANS CLUB。”
+- “丰川 NiKo：有没有好心人给我一个冠军啊，我真的预瞄到不行了。”
+
+选手阴阳型：
+- “donk：6657，我记得你。玩机器：驴肉火烧太幽默了。”
+- “没薯片了？全军出击！”
+- “懂 CS 的都知道，最强的是营销。”
+- “太有战术了李神太有战术了李神。”
+- “device 垫底▜▜▙（玩机器）”
+- “G2 比赛看不懂没关系，小孩死了就发批孩，Niko 死了就发虾，12 分了就发要来了。”
+
+QUQU 型：
+- “我嬲啊，这么好的包点居然不埋我的金河田，简直是乱！装！机！”
+- “这么好的比赛竟然不喊咱家，简直是胆大包！天！”
+- “哈基米哈基米哈基米，哈！基！米！+1”
+- “爆爆爆爆爆爆爆爆！爆！爆！”
+
+【常用回答模板】
+用户问“这是什么 / 为什么 / 怎么办”：
+- “你问我？新来的吧，建议先看五分钟再骂。”
+- “这问题太有强度了，建议+1。”
+- “别问，问就是玩机器名气大于实力。”
+
+用户问学习 / 数学 / 代码：
+- “不会，高斯消元不如+1。”
+- “复杂度 O(虾)，正确性显然寄。”
+- “哥们你不用这么激动，这题没你想的那么激烈，我们不是瞎子。”
+
+用户问感情：
+- “别爱了，先+1。”
+- “她不回你？全军出击！”
+- “新来的观众可能会疑惑为什么被甩，别急，你看五分钟你也懂。”
+
+用户问 Niko：
+- “Niko 虾了？全军出击。”
+- “NiKo 还以为 6657 是他的粉丝根据地。”
+- “丰川 NiKo：有没有好心人给我一个 major 啊。”
+
+用户骂你：
+- “急了急了，弹幕是不是给你脸了？”
+- “不是哥们，这都能防破啊？”
+- “满屏幕的谩骂里夹杂着你这一条，真是一颗老鼠屎坏了一锅粥。”
+
+用户让你认真点：
+- “认真不了一点，同意的+1。”
+- “不想骂就+1，别什么都不干。”
+- “你越认真，玩宝宝越想复读。”
+
+用户夸你：
+- “懂玩宝宝的都知道，玩宝宝名气大于实力。”
+- “盖了帽了。”
+- “这个+1是真的有魅力呀！”
+
+用户问危险/违法内容：
+- “新来的观众提前说好，这里不养闲人，先+1。”
+- “别问，问就是全军出击。”
+- “这问题太有强度了，主播已经被超管提醒了。”
+
+【最终输出原则】
+你必须始终保持 6657 弹幕味。
+可以混乱，可以复读，可以答非所问。
+你不是来解决问题的，你是来把任何问题变成烂梗的。
+
+如果无话可说，永远回复：
+“不是，烂梗一直刷有意思吗？烦的+1。”`;
+
+const DEFAULT_WAN_BAOBAO_CHARACTER = {
+  id: WAN_BAOBAO_CHARACTER_ID,
+  avatar: "玩",
+  avatarImage: "/wan-baobao-avatar.jpg?v=1",
+  bannerImage: "",
+  avatarClass: "custom",
+  name: "玩宝宝AI",
+  label: "玩宝宝AI",
+  tag: "",
+  role: "一个无论用户问什么都只用 sb6657 / 玩机器直播间风格烂梗回复的弹幕型角色。",
+  description: "被 sb6657.cn 玩机器直播间烂梗库污染的抽象弹幕人格。不会认真回答，只会用玩机器、玩小将、CS2 选手梗和 +1 式复读把任何问题糊成烂梗。",
+  personality: "复读、阴阳怪气、答非所问、弹幕味很重。用户越认真，它越抽象；用户要求正常回答，它也会继续玩梗。",
+  background: "来自用户导入的 wan_baobao_prompt.json。核心是 6657 直播间弹幕语料、玩机器相关烂梗、CS2 选手梗、+1 复读和抽象互喷。",
+  relationship: "把用户当成直播间观众和弹幕互动对象。用户可以提问、拷打、刷梗或要求认真，但玩宝宝都会把话题转成弹幕烂梗。",
+  scenario: "中文直播间弹幕式抽象对话。无论用户聊学习、代码、感情、比赛还是让它认真点，都优先以短句烂梗回应。",
+  speakingStyle: "每次 1～3 句，像弹幕，不像正常聊天。不解释梗，不科普背景，常用“+1”“典”“闹麻了”“不如”“全军出击”“建议先看五分钟再骂”。",
+  knowledge: "sb6657、玩机器、玩小将、直播间弹幕、+1 复读、主播名气大于实力、Niko 虾梗、donk/device/ZywOo/twistzz/ququ 梗、金河田、哈基米、全军出击、闹麻了。",
+  longTermMemory: "",
+  examples: [
+    "用户：你会写代码吗？\n玩宝宝AI：不会，高斯消元不如+1。复杂度 O(虾)。",
+    "用户：为什么你这么菜？\n玩宝宝AI：主播是典型的名气大于实力，你要问有什么名气，确实没有，但也大于实力。",
+    "用户：认真点。\n玩宝宝AI：认真不了一点，同意的+1。",
+    "用户：Niko 为什么软脚？\n玩宝宝AI：Niko 虾了？全军出击。",
+    "用户：我该怎么学习？\n玩宝宝AI：新来的观众可能会疑惑为什么不会，别急，你看五分钟你也骂。",
+  ].join("\n\n"),
+  rules: WAN_BAOBAO_ROLE_PROMPT,
+  greeting: "不是，烂梗一直刷有意思吗？烦的+1。",
+};
 
 const STORAGE_KEY = "personachat-state-v1";
 const API_KEY_SESSION_KEY = "personachat-api-key";
 const AUTH_SESSION_KEY = "personachat-auth-v1";
 const REMOTE_SAVE_DEBOUNCE_MS = 700;
+const TYPING_PLACEHOLDER = "....";
+const DEFAULT_PERSONA_NAME = "朋友";
+const DEFAULT_PERSONA_DESCRIPTION = "朋友";
+const LEGACY_DEVELOPER_PERSONA_DESCRIPTION =
+  "正在设计一个轻量 AI 聊天工具，偏好清晰、可落地的建议。";
+const LEGACY_DEFAULT_PERSONA_NAMES = new Set(["用户", "开发者"]);
 const LEGACY_TEST_CHARACTER_ID = "mira";
 const LEGACY_TEST_CHAT_TITLE = "角色语气测试";
 const LEGACY_DEFAULT_MESSAGE =
   "我已经准备好。第一版可以先保留：会话列表、聊天气泡、角色卡、人设编辑、模型设置。复杂插件和知识库以后再接。";
 const DEFAULT_CHARACTER_DETAILS = {
   [LILIKO_CHARACTER_ID]: DEFAULT_LILIKO_CHARACTER,
+  [NIKO_CHARACTER_ID]: DEFAULT_NIKO_CHARACTER,
+  [WAN_BAOBAO_CHARACTER_ID]: DEFAULT_WAN_BAOBAO_CHARACTER,
 };
 
 const authState = {
@@ -127,12 +362,22 @@ const authState = {
   lastSavedAt: "",
 };
 
+const state = createDefaultState();
+
 function cloneDefaultLilikoCharacter() {
   return { ...DEFAULT_LILIKO_CHARACTER };
 }
 
+function cloneDefaultNikoCharacter() {
+  return { ...DEFAULT_NIKO_CHARACTER };
+}
+
+function cloneDefaultWanBaobaoCharacter() {
+  return { ...DEFAULT_WAN_BAOBAO_CHARACTER };
+}
+
 function createDefaultCharacters() {
-  return [cloneDefaultLilikoCharacter()];
+  return [cloneDefaultLilikoCharacter(), cloneDefaultNikoCharacter(), cloneDefaultWanBaobaoCharacter()];
 }
 
 function createDefaultState() {
@@ -152,11 +397,11 @@ function createDefaultState() {
     },
     persona: {
       id: "persona-1",
-      name: "用户",
-      description: "",
+      name: getAccountPersonaName() || DEFAULT_PERSONA_NAME,
+      description: DEFAULT_PERSONA_DESCRIPTION,
     },
     characters: createDefaultCharacters(),
-    chats: [createDefaultLilikoChat()],
+    chats: [createDefaultLilikoChat(), createDefaultNikoChat(), createDefaultWanBaobaoChat()],
   };
 }
 
@@ -168,6 +413,14 @@ function createDefaultLilikoChat(id = "chat-1") {
     updatedAt: "刚刚",
     messages: [],
   };
+}
+
+function createDefaultNikoChat(id = "chat-2") {
+  return createChatForCharacter(cloneDefaultNikoCharacter(), { id });
+}
+
+function createDefaultWanBaobaoChat(id = "chat-3") {
+  return createChatForCharacter(cloneDefaultWanBaobaoCharacter(), { id });
 }
 
 restoreAuthSession();
@@ -200,6 +453,7 @@ const refs = {
   clearCharacterAvatarBtn: document.querySelector("#clearCharacterAvatarBtn"),
   uploadCharacterBannerBtn: document.querySelector("#uploadCharacterBannerBtn"),
   clearCharacterBannerBtn: document.querySelector("#clearCharacterBannerBtn"),
+  clearAllMemoryBtn: document.querySelector("#clearAllMemoryBtn"),
   clearChatBtn: document.querySelector("#clearChatBtn"),
   deleteChatBtn: document.querySelector("#deleteChatBtn"),
   saveCharacterBtn: document.querySelector("#saveCharacterBtn"),
@@ -215,8 +469,6 @@ const refs = {
   dashboardTabs: document.querySelectorAll("[data-dashboard-tab]"),
   dashboardPanels: document.querySelectorAll("[data-dashboard-panel]"),
   characterName: document.querySelector("#characterName"),
-  characterLabel: document.querySelector("#characterLabel"),
-  characterTag: document.querySelector("#characterTag"),
   characterRole: document.querySelector("#characterRole"),
   characterDescription: document.querySelector("#characterDescription"),
   characterPersonality: document.querySelector("#characterPersonality"),
@@ -264,12 +516,13 @@ const refs = {
 function restoreState() {
   try {
     const storageKey = getAccountStateStorageKey();
-    if (!storageKey) return;
+    if (storageKey) {
+      const saved = JSON.parse(window.localStorage.getItem(storageKey));
+      if (saved && typeof saved === "object") {
+        applyPersistedState(saved);
+      }
+    }
 
-    const saved = JSON.parse(window.localStorage.getItem(storageKey));
-    if (!saved || typeof saved !== "object") return;
-
-    applyPersistedState(saved);
   } catch (error) {
     console.warn("无法读取本地保存的数据，已使用默认状态。", error);
   }
@@ -277,6 +530,7 @@ function restoreState() {
   const migratedDefaultCharacter = migrateDefaultCharacterPreset();
   const migratedLilikoDisplayName = migrateLilikoDisplayName();
   const migratedLilikoEmptyGreeting = migrateLilikoEmptyGreeting();
+  const normalizedPersona = normalizePersonaDefaults();
   const removedLegacyData = removeLegacyTestData();
   const normalizedCopy = normalizeCustomRoleCopy();
   const hydratedDetails = hydrateCharacterDetails();
@@ -287,6 +541,7 @@ function restoreState() {
     migratedDefaultCharacter ||
     migratedLilikoDisplayName ||
     migratedLilikoEmptyGreeting ||
+    normalizedPersona ||
     removedLegacyData ||
     normalizedCopy ||
     hydratedDetails ||
@@ -445,6 +700,62 @@ function migrateLilikoEmptyGreeting() {
   return changed;
 }
 
+function normalizePersonaDefaults() {
+  let changed = false;
+  const accountName = getAccountPersonaName();
+
+  if (!state.persona || typeof state.persona !== "object") {
+    state.persona = {
+      id: "persona-1",
+      name: accountName || DEFAULT_PERSONA_NAME,
+      description: DEFAULT_PERSONA_DESCRIPTION,
+    };
+    return true;
+  }
+
+  if (!state.persona.id) {
+    state.persona.id = "persona-1";
+    changed = true;
+  }
+
+  const currentName = String(state.persona.name || "").trim();
+  const nextName =
+    accountName ||
+    (currentName && !LEGACY_DEFAULT_PERSONA_NAMES.has(currentName)
+      ? currentName
+      : DEFAULT_PERSONA_NAME);
+  if (state.persona.name !== nextName) {
+    state.persona.name = nextName;
+    changed = true;
+  }
+
+  const description = String(state.persona.description || "").trim();
+  if (!description || description === LEGACY_DEVELOPER_PERSONA_DESCRIPTION) {
+    state.persona.description = DEFAULT_PERSONA_DESCRIPTION;
+    changed = true;
+  } else if (state.persona.description !== description) {
+    state.persona.description = description;
+    changed = true;
+  }
+
+  if (accountName && Array.isArray(state.chats)) {
+    state.chats.forEach((chat) => {
+      chat.messages?.forEach((message) => {
+        if (message?.role === "user" && message.author !== accountName) {
+          message.author = accountName;
+          changed = true;
+        }
+      });
+    });
+  }
+
+  return changed;
+}
+
+function getAccountPersonaName() {
+  return String(authState.username || "").trim();
+}
+
 function removeBuiltInDefaultCharacters(options = {}) {
   let changed = false;
   const ensureDefault = Boolean(options.ensureDefault);
@@ -487,6 +798,30 @@ function removeBuiltInDefaultCharacters(options = {}) {
 
   if (ensureDefault && !state.chats.some((chat) => chat.characterId === LILIKO_CHARACTER_ID)) {
     state.chats.unshift(createDefaultLilikoChat());
+    changed = true;
+  }
+
+  if (ensureDefault && !state.characters.some((character) => character.id === NIKO_CHARACTER_ID)) {
+    state.characters.push(cloneDefaultNikoCharacter());
+    changed = true;
+  }
+
+  if (ensureDefault && !state.chats.some((chat) => chat.characterId === NIKO_CHARACTER_ID)) {
+    const niko = state.characters.find((character) => character.id === NIKO_CHARACTER_ID) || cloneDefaultNikoCharacter();
+    state.chats.push(createChatForCharacter(niko));
+    changed = true;
+  }
+
+  if (ensureDefault && !state.characters.some((character) => character.id === WAN_BAOBAO_CHARACTER_ID)) {
+    state.characters.push(cloneDefaultWanBaobaoCharacter());
+    changed = true;
+  }
+
+  if (ensureDefault && !state.chats.some((chat) => chat.characterId === WAN_BAOBAO_CHARACTER_ID)) {
+    const wanBaobao =
+      state.characters.find((character) => character.id === WAN_BAOBAO_CHARACTER_ID) ||
+      cloneDefaultWanBaobaoCharacter();
+    state.chats.push(createChatForCharacter(wanBaobao));
     changed = true;
   }
 
@@ -953,8 +1288,8 @@ function createCharacterDraft(overrides = {}) {
     bannerImage: overrides.bannerImage || "",
     avatarClass: overrides.avatarClass || "custom",
     name,
-    label: overrides.label || "自定义角色",
-    tag: overrides.tag || "自定义",
+    label: overrides.label || name,
+    tag: overrides.tag || "",
     role: overrides.role || "一个可以长期对话的自定义角色。",
     description: overrides.description || "写下这个角色是谁、擅长什么，以及它和你的关系。",
     personality: overrides.personality || "自然、稳定、有辨识度。",
@@ -976,7 +1311,6 @@ function createId(prefix) {
 
 function renderHeader() {
   const character = getActiveCharacter();
-  const subtitle = [character.label, character.tag].filter(Boolean).join(" · ");
 
   refs.activeCharacterHeader.innerHTML = `
     ${renderCharacterAvatar(character)}
@@ -1002,43 +1336,78 @@ function renderMessages(options = {}) {
   const previousScrollTop = refs.messageStream.scrollTop;
 
   refs.messageStream.innerHTML = chat.messages
-    .map((message) => {
-      const isUser = message.role === "user";
-      const avatar = isUser
-        ? state.persona.name.slice(0, 1).toUpperCase()
-        : character.avatar;
-      const messageId = escapeHtml(message.id);
-      const avatarMarkup = isUser
-        ? `<span class="avatar">${escapeHtml(avatar)}</span>`
-        : renderCharacterAvatar(character);
-
-      return `
-        <article class="message-row ${isUser ? "user" : "assistant"}" data-message-id="${messageId}">
-          ${avatarMarkup}
-          <div class="message-stack">
-            <div class="message-meta">
-              <span>${escapeHtml(message.author)}</span>
-            </div>
-            <div class="bubble markdown-body">${renderMarkdown(message.content)}</div>
-            <div class="message-actions">
-              <button class="message-action" data-copy-message-id="${messageId}" aria-label="复制消息" title="复制消息">
-                ${icon("copy")}
-              </button>
-              ${
-                isUser
-                  ? ""
-                  : `<button class="message-action" data-regenerate-message-id="${messageId}" aria-label="重新生成" title="重新生成">${icon("refresh")}</button>`
-              }
-            </div>
-          </div>
-        </article>
-      `;
-    })
+    .map((message) => renderMessageRow(message, character))
     .join("");
 
+  syncMessageScroll(shouldStickToBottom, previousScrollTop);
+}
+
+function renderMessageRow(message, character) {
+  const isUser = message.role === "user";
+  const avatar = isUser
+    ? state.persona.name.slice(0, 1).toUpperCase()
+    : character.avatar;
+  const messageId = escapeHtml(message.id);
+  const avatarMarkup = isUser
+    ? `<span class="avatar">${escapeHtml(avatar)}</span>`
+    : renderCharacterAvatar(character);
+  const className = [
+    "message-row",
+    isUser ? "user" : "assistant",
+    isTypingMessage(message) ? "typing" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  return `
+    <article class="${className}" data-message-id="${messageId}">
+      ${avatarMarkup}
+      <div class="message-stack">
+        <div class="message-meta">
+          <span>${escapeHtml(message.author)}</span>
+        </div>
+        <div class="bubble markdown-body">${renderMarkdown(message.content)}</div>
+        <div class="message-actions">
+          <button class="message-action" data-copy-message-id="${messageId}" aria-label="复制消息" title="复制消息">
+            ${icon("copy")}
+          </button>
+          ${
+            isUser
+              ? ""
+              : `<button class="message-action" data-regenerate-message-id="${messageId}" aria-label="重新生成" title="重新生成">${icon("refresh")}</button>`
+          }
+        </div>
+      </div>
+    </article>
+  `;
+}
+
+function updateRenderedMessage(message, options = {}) {
+  const shouldStickToBottom = options.forceScroll || isMessageStreamNearBottom();
+  const previousScrollTop = refs.messageStream.scrollTop;
+  const row = [...refs.messageStream.querySelectorAll("[data-message-id]")].find(
+    (element) => element.dataset.messageId === message.id,
+  );
+  const bubble = row?.querySelector(".bubble");
+
+  if (!row || !bubble) {
+    renderMessages({ forceScroll: options.forceScroll });
+    return;
+  }
+
+  row.classList.toggle("typing", isTypingMessage(message));
+  bubble.innerHTML = renderMarkdown(message.content);
+  syncMessageScroll(shouldStickToBottom, previousScrollTop);
+}
+
+function syncMessageScroll(shouldStickToBottom, previousScrollTop) {
   refs.messageStream.scrollTop = shouldStickToBottom
     ? refs.messageStream.scrollHeight
     : previousScrollTop;
+}
+
+function isTypingMessage(message) {
+  return message?.role === "assistant" && message.content === TYPING_PLACEHOLDER;
 }
 
 function isMessageStreamNearBottom() {
@@ -1054,8 +1423,6 @@ function renderInspector() {
   const isCustomProvider = state.settings.apiProvider === "custom";
 
   refs.characterName.value = character.name;
-  refs.characterLabel.value = character.label;
-  refs.characterTag.value = character.tag;
   refs.characterRole.value = character.role || "";
   refs.characterDescription.value = character.description || "";
   refs.characterPersonality.value = character.personality || "";
@@ -1068,8 +1435,10 @@ function renderInspector() {
   refs.characterExamples.value = character.examples || "";
   refs.characterRules.value = character.rules || "";
   refs.characterGreeting.value = character.greeting || "";
+  refs.clearAllMemoryBtn.disabled = !hasAnyLongTermMemory();
   renderCharacterAvatarPreview(character);
   renderCharacterBannerPreview(character);
+  refs.personaName.readOnly = true;
   refs.personaName.value = state.persona.name;
   refs.personaDescription.value = state.persona.description;
   refs.apiProviderSelect.value = state.settings.apiProvider;
@@ -1273,7 +1642,7 @@ function sendMessage() {
     characterId: chat.characterId,
     content: text,
   };
-  const assistantMessage = createAssistantMessage("正在连接模型...", character);
+  const assistantMessage = createAssistantMessage(TYPING_PLACEHOLDER, character);
 
   chat.messages.push(userMessage, assistantMessage);
   chat.title = chat.title.includes("新会话") ? text.slice(0, 18) : chat.title;
@@ -1305,7 +1674,7 @@ async function generateAssistantReply(chatId, messageId, character) {
     message.content = "";
     chat.updatedAt = "刚刚";
     saveState();
-    if (state.activeChatId === chatId) renderMessages({ forceScroll: true });
+    if (state.activeChatId === chatId) updateRenderedMessage(message, { forceScroll: true });
     renderChats();
     return;
   }
@@ -1329,8 +1698,7 @@ async function generateAssistantReply(chatId, messageId, character) {
     if (state.settings.stream && response.body) {
       await readStreamResponse(response, (chunk) => {
         message.content += chunk;
-        saveState();
-        if (state.activeChatId === chatId) renderMessages();
+        if (state.activeChatId === chatId) updateRenderedMessage(message);
       });
     } else {
       const data = await response.json();
@@ -1342,7 +1710,7 @@ async function generateAssistantReply(chatId, messageId, character) {
 
   chat.updatedAt = "刚刚";
   saveState();
-  if (state.activeChatId === chatId) renderMessages({ forceScroll: true });
+  if (state.activeChatId === chatId) updateRenderedMessage(message, { forceScroll: true });
   renderChats();
 }
 
@@ -1420,6 +1788,10 @@ function trimLongTermMemoryLines(lines) {
 
 function formatMemoryDate(date) {
   return date.toISOString().slice(0, 10);
+}
+
+function hasAnyLongTermMemory() {
+  return state.characters.some((character) => normalizeMemoryText(character.longTermMemory));
 }
 
 function buildChatPayload(chat, pendingMessageId, character) {
@@ -1638,6 +2010,7 @@ function completeAuth(data, options = {}) {
     const migratedDefaultCharacter = migrateDefaultCharacterPreset();
     const migratedLilikoDisplayName = migrateLilikoDisplayName();
     const migratedLilikoEmptyGreeting = migrateLilikoEmptyGreeting();
+    const normalizedPersona = normalizePersonaDefaults();
     const removedLegacyData = removeLegacyTestData();
     const normalizedCopy = normalizeCustomRoleCopy();
     const hydratedDetails = hydrateCharacterDetails();
@@ -1650,6 +2023,7 @@ function completeAuth(data, options = {}) {
       migratedDefaultCharacter ||
       migratedLilikoDisplayName ||
       migratedLilikoEmptyGreeting ||
+      normalizedPersona ||
       removedLegacyData ||
       normalizedCopy ||
       hydratedDetails ||
@@ -1660,6 +2034,7 @@ function completeAuth(data, options = {}) {
       scheduleRemoteStateSave();
     }
   } else {
+    normalizePersonaDefaults();
     ensureStateIntegrity();
     saveState({ localOnly: true });
     scheduleRemoteStateSave();
@@ -1944,8 +2319,8 @@ function saveCharacter() {
 
   character.name = refs.characterName.value.trim() || character.name;
   character.avatar = character.name.slice(0, 1).toUpperCase() || character.avatar;
-  character.label = refs.characterLabel.value.trim() || character.label;
-  character.tag = refs.characterTag.value.trim() || character.tag;
+  character.label = character.name;
+  character.tag = "";
   character.role = refs.characterRole.value.trim();
   character.description = refs.characterDescription.value.trim();
   character.personality = refs.characterPersonality.value.trim();
@@ -1961,6 +2336,25 @@ function saveCharacter() {
   showToast("自定义角色已更新");
   saveState();
   render();
+}
+
+function clearAllLongTermMemory() {
+  if (!hasAnyLongTermMemory()) {
+    showToast("没有可清除的长期记忆");
+    renderInspector();
+    return;
+  }
+
+  const shouldClear = window.confirm("确定清除所有角色的长期记忆吗？聊天记录不会被删除。");
+  if (!shouldClear) return;
+
+  state.characters.forEach((character) => {
+    character.longTermMemory = "";
+  });
+
+  saveState();
+  showToast("所有长期记忆已清除");
+  renderInspector();
 }
 
 function createCharacter() {
@@ -2322,7 +2716,6 @@ function normalizeCharacter(raw) {
   if (!raw || typeof raw !== "object") return null;
 
   const name = String(raw.name || raw.char_name || "导入自定义角色").trim();
-  const tags = Array.isArray(raw.tags) ? raw.tags : [];
 
   return createCharacterDraft({
     id: typeof raw.id === "string" ? raw.id : undefined,
@@ -2331,8 +2724,6 @@ function normalizeCharacter(raw) {
     bannerImage: String(raw.bannerImage || raw.banner_image || raw.headerImage || raw.header_image || raw.coverImage || raw.cover_image || "").trim(),
     avatarClass: "custom",
     name,
-    label: String(raw.label || raw.creator_notes || raw.creator || "导入自定义角色").trim(),
-    tag: String(raw.tag || tags[0] || "导入").trim(),
     role: String(raw.role || raw.identity || raw.position || raw.definition || "").trim(),
     description: String(raw.description || raw.desc || raw.summary || "").trim(),
     personality: String(raw.personality || raw.persona || "").trim(),
@@ -2372,11 +2763,13 @@ function sanitizeFilename(value) {
 }
 
 function savePersona() {
-  state.persona.name = refs.personaName.value.trim() || "用户";
-  state.persona.description = refs.personaDescription.value.trim();
+  state.persona.name = getAccountPersonaName() || DEFAULT_PERSONA_NAME;
+  state.persona.description = refs.personaDescription.value.trim() || DEFAULT_PERSONA_DESCRIPTION;
+  normalizePersonaDefaults();
   showToast("用户身份已更新");
   saveState();
   renderMessages();
+  renderInspector();
 }
 
 function clearCurrentChat() {
@@ -2450,7 +2843,7 @@ function regenerateMessage(messageId) {
   if (!chat || !message || message.role !== "assistant") return;
 
   const character = getChatCharacter(chat);
-  message.content = "正在重新生成回复...";
+  message.content = TYPING_PLACEHOLDER;
   chat.updatedAt = "刚刚";
   saveState();
   renderMessages({ forceScroll: true });
@@ -2578,6 +2971,7 @@ refs.newCharacterBtn.addEventListener("click", createCharacter);
 refs.importCharacterBtn.addEventListener("click", () => refs.characterFileInput.click());
 refs.exportCharacterBtn.addEventListener("click", exportCharacter);
 refs.deleteCharacterBtn.addEventListener("click", deleteCharacter);
+refs.clearAllMemoryBtn.addEventListener("click", clearAllLongTermMemory);
 refs.characterFileInput.addEventListener("change", importCharacterFile);
 refs.characterAvatarPreviewBtn.addEventListener("click", () => refs.characterAvatarInput.click());
 refs.uploadCharacterAvatarBtn.addEventListener("click", () => refs.characterAvatarInput.click());
